@@ -1,0 +1,169 @@
+# @configure_input@
+
+# libsrc/ level makefile template
+
+# Package-specific substitution variables
+package   = @PACKAGE_NAME@
+version   = @PACKAGE_VERSION@
+tarname   = @PACKAGE_TARNAME@
+distdir   = $(tarname)_$(version)
+
+# Prefix-specific substitution variables
+prefix    = @prefix@
+
+# Mixed package and prefix substitution variables
+installdir  = $(prefix)/$(distdir)
+
+# Compiler substitution variables
+CC           = @CC@
+CFLAGS       = @CFLAGS@ -D__64BIT__
+AR           = @AR@
+ARFLAGS      = @ARFLAGS@
+RANLIB       = @RANLIB@
+INSTALL      = @INSTALL@
+INSTALL_DATA = @INSTALL_DATA@
+
+#  If you want to enable support for PNG or JPEG2000 encoding/decoding,
+#  you must specify -DUSE_PNG and/or -DUSE_JPEG2000 in the DEFS variable
+#  for the C pre-processor
+#  -DUSE_PNG requires libpng.a and libz.a
+#                     ( and png.h pngconf.h zconf.h zlib.h include files).
+#  -DUSE_JPEG2000 requires libjasper.a
+#                     ( and all the jasper/*.h include files).
+#
+#  In addition, INC must include all directories where the above
+#  mentioned include files can be found.
+
+ifneq "$(JASPER_INC)" ""
+CFLAGS += -DUSE_JPEG2000 -I$(JASPER_INC)
+endif
+
+ifneq "$(PNG_INC)" ""
+CFLAGS += -DUSE_PNG -I$(PNG_INC)
+endif
+
+ifneq "$(Z_INC)" ""
+CFLAGS += -I$(Z_INC)
+endif
+
+# The library name
+LIBRARY = lib$(tarname).a
+
+# The complete list of source files
+SRC_FILES = \
+ cmplxpack.c \
+ compack.c \
+ comunpack.c \
+ dec_jpeg2000.c \
+ dec_png.c \
+ drstemplates.c \
+ enc_jpeg2000.c \
+ enc_png.c \
+ g2_addfield.c \
+ g2_addgrid.c \
+ g2_addlocal.c \
+ g2_create.c \
+ g2_free.c \
+ g2_getfld.c \
+ g2_gribend.c \
+ g2_info.c \
+ g2_miss.c \
+ g2_unpack1.c \
+ g2_unpack2.c \
+ g2_unpack3.c \
+ g2_unpack4.c \
+ g2_unpack5.c \
+ g2_unpack6.c \
+ g2_unpack7.c \
+ gbits.c \
+ getdim.c \
+ getpoly.c \
+ gridtemplates.c \
+ int_power.c \
+ jpcpack.c \
+ jpcunpack.c \
+ misspack.c \
+ mkieee.c \
+ pack_gp.c \
+ pdstemplates.c \
+ pngpack.c \
+ pngunpack.c \
+ rdieee.c \
+ reduce.c \
+ seekgb.c \
+ simpack.c \
+ simunpack.c \
+ specpack.c \
+ specunpack.c
+
+# The list of object files
+OBJ_FILES = ${SRC_FILES:.c=.o}
+
+# The targets
+all: library
+
+$(LIBRARY): $(OBJ_FILES)
+	$(AR) $(ARFLAGS) $@ $(OBJ_FILES)
+	$(RANLIB) $@
+
+library: $(LIBRARY)
+
+clean:
+	-rm -f *.o *.a
+
+distclean:
+	-rm Makefile
+
+check:  library
+	@echo "***THIS IS WHERE THE UNIT TEST INVOCATION GOES***"
+
+# ...GNU-style installation
+install:
+	$(INSTALL) -d $(DESTDIR)$(installdir)/include
+	$(INSTALL_DATA) grib2.h $(DESTDIR)$(installdir)/include
+	$(INSTALL) -d $(DESTDIR)$(installdir)/lib
+	$(INSTALL_DATA) $(LIBRARY) $(DESTDIR)$(installdir)/lib
+	$(INSTALL_DATA) ../config.log $(DESTDIR)$(installdir)
+
+# ...NCO-style installation
+nco_install: FORCE
+	$(INSTALL) -d $(DESTDIR)$(installdir)
+	$(INSTALL_DATA) $(LIBRARY) $(DESTDIR)$(installdir)/lib$(distdir).a
+	$(INSTALL) -d $(DESTDIR)$(installdir)/incmod/$(distdir)
+	$(INSTALL_DATA) grib2.h $(DESTDIR)$(installdir)/incmod/$(distdir)
+	$(INSTALL_DATA) ../config.log $(DESTDIR)$(installdir)/config.log.$(distdir)
+
+FORCE:
+	@if [ -d $(DESTDIR)$(installdir) ]; then \
+          echo; \
+	  echo "*** NCO-style installation does not install into existing directories! ***"; \
+	  echo "*** $(DESTDIR)$(installdir) already exists! ***"; \
+          echo; \
+	  exit 1; \
+	fi
+
+# ...Universal uninstallation
+uninstall:
+	-rm -fr $(DESTDIR)$(installdir)
+
+# ...Reconfig targets
+Makefile: Makefile.in ../config.status
+	cd .. && ./config.status sorc/$@
+
+../config.status: ../configure
+	cd .. && ./config.status --recheck
+
+# Specify targets that do not generate filesystem objects
+.PHONY: all clean distclean check install nco_install uninstall
+
+# Dependency include file
+-include Makefile.deps
+
+Makefile.deps:
+	$(CC) -c $(CFLAGS) -MM *.[ch] > Makefile.deps
+
+# Suffix rules
+.SUFFIXES:
+.SUFFIXES: .c .o
+.c.o:
+	$(CC) -c $(CFLAGS) $<
