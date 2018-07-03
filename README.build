@@ -1,0 +1,13 @@
+
+1) (wcoss) module use -a /nwprod/lib/modulefiles
+   (theia) module use -a /scratch3/NCEPDEV/nwprod/lib/modulefiles
+
+2) module load jasper/v1.900.1
+   module load png/v1.2.44
+   module load z/v1.2.6
+
+3) ./configure --prefix=<path>
+
+4) make
+
+5) make install
